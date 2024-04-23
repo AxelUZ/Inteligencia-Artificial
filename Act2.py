@@ -3,6 +3,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_squared_error
 
 '''
 1.
@@ -63,16 +64,16 @@ X_train, X_test, Y_train, Y_test = train_test_split(X_scaled, Y, test_size=0.4, 
 # diferentes números de neuronas por capa
 
 configurations = [
-    (),                     # Una capa oculta sin neuronas (modelo lineal)
-    (3,),                   # Una capa oculta con 3 neuronas
-    (6,),                   # Una capa oculta con 6 neuronas
-    (5, 5),                 # Dos capas ocultas con 5 neuronas cada una
-    (8, 3),                 # Dos capas ocultas con 8 y 3 neuronas respectivamente
-    (10, 3),                # Dos capas ocultas con 10 y 3 neuronas respectivamente
-    (20, 15),               # Dos capas ocultas con 20 y 15 neuronas respectivamente
-    (10, 10),               # Dos capas ocultas con 10 neuronas cada una
-    (15, 15),               # Dos capas ocultas con 15 neuronas cada una
-    (2, 2),                 # Dos capas ocultas con 2 neuronas cada una
+    {'hidden_layer_sizes': (), 'activation': 'logistic', 'solver': 'lbfgs', 'learning_rate': 'constant'},
+    {'hidden_layer_sizes': (5,), 'activation': 'relu', 'solver': 'sgd', 'learning_rate': 'adaptive'},
+    {'hidden_layer_sizes': (3,), 'activation': 'tanh', 'solver': 'adam', 'learning_rate': 'invscaling'},
+    {'hidden_layer_sizes': (5, 3), 'activation': 'relu', 'solver': 'lbfgs', 'learning_rate': 'constant'},
+    {'hidden_layer_sizes': (2,), 'activation': 'tanh', 'solver': 'sgd', 'learning_rate': 'adaptive'},
+    {'hidden_layer_sizes': (8,), 'activation': 'relu', 'solver': 'adam', 'learning_rate': 'adaptive'},
+    {'hidden_layer_sizes': (3, 2), 'activation': 'logistic', 'solver': 'lbfgs', 'learning_rate': 'constant'},
+    {'hidden_layer_sizes': (5, 2), 'activation': 'relu', 'solver': 'adam', 'learning_rate': 'constant'},
+    {'hidden_layer_sizes': (4,), 'activation': 'tanh', 'solver': 'sgd', 'learning_rate': 'invscaling'},
+    {'hidden_layer_sizes': (7,), 'activation': 'relu', 'solver': 'adam', 'learning_rate': 'constant'},
 ]
 
 better_model = None
@@ -81,26 +82,36 @@ better_accuarcy = 0
 # Ciclo para probar todas las configuraciones anteriormente mencionadas
 for config in configurations:
     # Crear el modelo MLPClassifier con la configuración actual
-    model = MLPClassifier(hidden_layer_sizes=config, activation='relu', solver='sgd', max_iter=3000, random_state=1)
+    model = MLPClassifier(max_iter=3000, random_state=1, **config)
 
     # Entrenar el modelo
     model.fit(X_train, Y_train)
 
-    # Evaluar el modelo en el conjunto de prueba X_test
+    # Evaluar el modelo en el conjunto de prueba X_test y tambien para X_train y asi calcular errores y eficiencia en
+    # entrenamiento
     Y_pred = model.predict(X_test)
+    Y_train_pred = model.predict(X_train)
 
-    # Precisión del modelo
-    accuracy = accuracy_score(Y_test, Y_pred)
+    # Precisión del modelo en conjunto de prueba
+    accuracy_test = accuracy_score(Y_test, Y_pred)
 
-    # Imprimir la precisión del modelo para cada configuracion
-    print(f"Configuración de red: {config}, Precisión: {accuracy}")
+    # Error de eficiencia para aprendizaje y generalización
+    # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.mean_squared_error.html#sklearn.metrics.mean_squared_error
+    learning_error = mean_squared_error(Y_train, Y_train_pred)
+    generalization_error = mean_squared_error(Y_test, Y_pred)
+
+    # Imprimir la precisión del modelo para cada configuracion y sus errores
+    print(
+        "Configuración de red: {}\nPrecisión de pruebas: "
+        "{:.2f}\nError de aprendizaje: {:.2f}\nError de generalización: {:.2f}\n---"
+        .format(config, accuracy_test, learning_error, generalization_error)
+    )
 
     # Actualizar el mejor modelo y precisión
-    if accuracy > better_accuarcy:
-        better_accuarcy = accuracy
+    if accuracy_test > better_accuarcy:
+        better_accuarcy = accuracy_test
         better_model = model
 
 # Mejor modelo y precisión
 print("\nMejor configuración de red:", better_model)
-
 print("\nPrecisión en el conjunto de prueba:", better_accuarcy)
